@@ -1,0 +1,251 @@
+---
+title: "Was the Past a Blast?"
+author: "Jeneta Nwosu"
+date: "2024-12-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction 
+
+The present is horrible. At least, for anyone paying attention. The impenetrable blanket of pessimism pervasive in the post-modern media ecosystem was a well-established problem even for legacy media.^[Meer, Toni G. L. A. van der, Anne C. Kroon, Piet Verhoeven, and Jeroen Jonkman. 2018. “Mediatization and the Disproportionate Attention to Negative News: The Case of Airplane Crashes.” Journalism Studies 20 (6): 783–803. doi:10.1080/1461670X.2018.1423632.
+] Isolated exceptional events easily gained a foothold in the collective imagination. Incentives like television ratings pushed outlets to seek the most sensational, lurid content available to compete for eyes. Now, in the internet and social media age, the age-old adage “if it bleeds, it leads” could not be more true. Negative news coverage spreads digitally like wildfire.^[Watson, J., van der Linden, S., Watson, M., & Stillwell, D. (2024). Negative online news articles are shared more to social media. Scientific Reports (Nature Publisher Group), 14(1), 21592. https://doi.org/10.1038/s41598-024-71263-z]
+
+
+One possible result of distortionary media coverage could be a widespread belief that, relative to other eras, current life is uniquely bad. Both the existence and the veracity of this effect can theoretically be evaluated with data. The problem, then, is determining the scope. How can we objectively define what it looks like for any particular time to be good or bad? How do we ascertain and measure this goodness (badness) and the perception thereof? The answer to the former question must be, “We can’t.” There can be no objectivity in selecting a system of measurement. A value system is baked in. But there is a potential answer for the latter, one that doesn’t pretend to be universal, but is nonetheless well-defined.
+
+
+As a start, there are three main axes along which we can focus a provisional analysis. These are the **economy**, **society**, and the **government**. Along each, we can measure both the public perception and the “true value.” 
+
+Starting with the economy, it’s important to emphasize a focus on a plausibly-individual experience of the world (another baked-in value). The chosen economic indicator should represent one’s standard of living. E.g., less like manufacturing output, more like affordability of food. 
+
+On the social axis, we’re interested in people’s answers to questions like, “Do I like my nation? My community? My neighbors?” Though imperfect, a measure like crime rate could capture the “true value” for social trust. As in, “Is society worth trusting?” 
+
+Finally, measuring the effectiveness of the government and the perception of its efficacy helps us judge the relative quality of “the system,” all the underlying processes that make essential services work.
+
+Below, see a table of my chosen measures for each axis.
+
+```{r, echo=FALSE, results='asis'}
+
+tabl <- "
+| **Axis**       | Perception measure             | “True value” measure      |
+|:----------------|:--------------------------------:|---------------------------:|
+|   **Economy**  |       Consumer Sentiment       |        Unemployment       |
+|   **Society**  |   Handguns per 100000 people   |       Homicide Data       |
+| **Government** | Mayoral Incumbent victory rate | Infrastructure Investment |
+"
+cat(tabl)
+
+```
+
+
+```{r}
+# Packages
+require(tidyverse)
+require(readxl)
+require(psych)
+setwd('/Users/jennenwosu/digital_history/Digital-History/final_project_w_data')
+```
+
+## Economy
+
+#### Perceived
+
+Surveys of Consumers at the University of Michigan maintains a long-running index based on how consumers feel about the financial status of themselves and others. The data changes from bimonthly to monthly reporting in 1977 so the two versions must be merged.^[University of Michigan. 2024. “University of Michigan: Consumer Sentiment [UMCSENT].” Retrieved from FRED, Federal Reserve Bank of St. Louis. October 1, 2024. https://fred.stlouisfed.org/series/UMCSENT.] ^[See questions asked here: https://data.sca.isr.umich.edu/fetchdoc.php?docid=24770]
+
+```{r}
+csent_77 <- read_csv('UMCSENT1.csv')
+csent_24 <- read_csv('UMCSENT.csv', na = ".")
+
+
+csent <- csent_24 %>%
+  left_join(csent_77, join_by('DATE',UMCSENT==UMCSENT1))
+
+# Aggregating annually
+csent <- csent%>%
+  drop_na() %>%
+  mutate(DATE = format(as.Date(DATE, format="%d/%m/%Y"),"%Y")) %>%
+  group_by(DATE) %>%
+  summarize(UMCSENT=mean(UMCSENT))
+
+
+colnames(csent)[1] <- 'year'
+csent$year <- as.numeric(csent$year)
+summary(csent$year) # 1952-2024
+
+
+```
+
+#### "True Value"
+
+Though I've decided unemployment is the best metric to use in this instance, there are others that are a better foil to consumer sentiment. I considered using real wage, but that breaks one of the foundational rules necessary for the functioning of this project: my indicators cannot be unduly related to time. U.S. real wage will be always reflect workers' increasing productivity over time (e.g. from improvements to tech). It's hardly a fair point of comparison. Unemployment varies much more with minimal time-trend and reflects better if a time was good (people had jobs) or a time was bad (no jobs). Sadly, it unfairly dismisses moments like the present, where even at close-to-full employment, high prices understandably still give consumers indigestion. ^[Bureau of Labor Statistics. 2024. “Unemployment Rate [UNRATE].” FRED. Federal Reserve Bank of St. Louis. https://fred.stlouisfed.org/series/UNRATE.]
+
+```{r}
+unemployment <- read_csv('UNRATE.csv')
+# Aggregating annually
+unemployment <- unemployment%>%
+  drop_na() %>%
+  mutate(DATE = format(as.Date(DATE, format="%d/%m/%Y"),"%Y")) %>%
+  group_by(DATE) %>%
+  summarize(UNRATE=mean(UNRATE))
+
+colnames(unemployment)[1] <- 'year'
+unemployment$year <- as.numeric(unemployment$year)
+
+```
+
+## Government
+#### Perceived
+
+I am extremely lucky to have stumbled upon Justin de Benedictis-Kessner's data on mayoral elections, because I had exactly in mind some measure that was national in scale, but not scope. Though not all are engaged enough to vote in mayor elections, those who do are not voting on ideological kneejerk. It is reasonable to assume  incumbent mayor victory rate will help us understand how people feel about the *fundamentals* of government over time.^[Benedictis-Kessner, Justin de. 2018. “Off-Cycle and Out of Office: Election Timing and the Incumbency Advantage.” The Journal of Politics 80 (1): 119–32. https://doi.org/10.1086/694396.] ^[de Benedictis-Kessner, J., Lee, D., Velez, Y. R., & Warshaw, C. (2023, May 16). American Local Government Elections Database. Retrieved from osf.io/mv5e6]
+
+```{r}
+mayor_14 <- read_csv('mayoral_elecs_updated20170413.csv')
+candidate_21 <- read_csv('ledb_candidatelevel.csv')
+load('/Users/jennenwosu/digital_history/proj data/mayors_rdd_analysis_final.RData')
+  
+mayor_14 <- mayor_14 %>%
+  mutate(winner = iconv(winner,to="ASCII"))%>%
+  mutate(isIncumbent = ifelse(grepl('(I)', winner), 1, 0)) %>%
+  select(YearData, mayor_name_final, isIncumbent, fips) 
+
+incum <- data2 %>%
+  select(YearData, fips.x, incumbent_reelected)
+
+mayor_14 <- left_join(mayor_14, incum, join_by(YearData, fips == fips.x))
+
+mayor_14$incumbent_reelected[is.na(mayor_14$incumbent_reelected)] <- 0
+mayor_14 %>%
+   mutate(isIncumbent = ifelse(
+     ifelse(
+       isIncumbent==1,
+       TRUE,
+       incumbent_reelected==1
+     ),
+     1,
+     0
+     )
+     )
+mayor_14 <- mayor_14 %>%
+  select(YearData, mayor_name_final, isIncumbent, fips) %>%
+  arrange(mayor_name_final, YearData) %>% 
+  mutate(isIncumbent = ifelse(
+     ifelse(
+       isIncumbent==1,
+       TRUE,
+       mayor_name_final==dplyr::lag(mayor_name_final)&fips==dplyr::lag(fips)
+     ),
+     1,
+     0
+     )
+     )
+
+
+mayor_21 <- candidate_21 %>%
+  filter(office_consolidated=='Mayor') %>%
+  select(year, full_name, fips, winner, incumbent)%>%
+  mutate(fips = as.numeric(fips), mayor_incumbent = ifelse(winner == 'win' & incumbent>0, 1, 0))
+
+mayor_all <- mayor_21 %>% full_join(mayor_14, join_by(mayor_incumbent == isIncumbent,year==YearData, fips, full_name == mayor_name_final, )) %>%
+  select(-winner, -incumbent) %>% arrange(year)
+
+mayor_all$mayor_incumbent[is.na(mayor_all$mayor_incumbent)] <- 0
+
+inc_win_data <- mayor_all %>%
+  arrange(year) %>%
+  group_by(year) %>%
+  summarize(win_rate = mean(mayor_incumbent))%>%
+  filter(year>1949)
+
+summary(inc_win_data)
+
+```
+
+#### "True Value"
+
+The measurement of how fundamentally good the government is at maintaining the basics — literally. Basic infrastructure investment over time in millions of chained (2012) dollars.^[Bennett, Jennifer, Robert Kornfeld, Daniel Sichel, and David Wasshausen. 2020. “Measuring Infrastructure in the Bureau of Economic Analysis National Economic Accounts.” WP2020-12. BEA Working Paper Series. https://www.bea.gov/system/files/papers/BEA-WP2020-12.pdf.]
+
+```{r}
+
+basic_infra <- read_excel('/Users/jennenwosu/digital_history/proj data/infrastructure-data-may-2020.xlsx', sheet='Sheet2')
+
+
+```
+
+## Society
+#### Perceived
+
+The society axis is intended to describe how comfortable U.S. residents are with the people around them. I would have liked to use survey data with questions like "Have you been kind to a stranger recently?" or "Are you afraid to walk alone at night?" but polls didn't occur in every year in question. Instead, I will use handgun ownership as a proxy for fear of being attacked.^[Data by the Trace - Explanation here, https://www.thetrace.org/2023/03/guns-america-data-atf-total/ , and data here: https://docs.google.com/spreadsheets/u/1/d/e/2PACX-1vShiwPP36HrjUyPztuIhoYjR3Xd3uhlQivMC3wPSNq1UCjVbj2wsPZIISqOtFQ0NbVVwwKBzyrDNuCz/pubhtml ] 
+
+```{r}
+handguns <- read_csv('gun_data - Sheet2.csv')
+
+# handguns %>%
+#   ggplot(aes(x = year)) +
+#   geom_line(aes(y = handguns_per_100k)) 
+
+
+```
+
+#### "True Value"
+
+A promising measure of the true 'badness' of society, of how scared we should actually be of each other, is crime. I shy away from using statistics like arrests, because they can depend on things that don't have to do with the actual level of crime. Also, the most exhaustive victimization data, the National Crime Victimization Survey (NCVS) from the Bureau of Justice Statistics, doesn't go far back enough. Fortunately, health data on mortality is readily available; we can use share of deaths from homicide as a representation of violence.^[WHO Mortality Database. 2024. “Share of Total Deaths from Homicide in Both Sexes in All Ages.” Our World in Data. July 30, 2024. https://ourworldindata.org/grapher/share-of-deaths-from-homicide?tab=chart&country=~USA.]
+
+```{r}
+
+homicide <- read_csv('share-of-deaths-from-homicide.csv')
+homicide <- homicide[,3:4]
+colnames(homicide) <- c('year', 'homicide_share')
+
+```
+
+# Constructing an Index
+
+After standardizing and averaging each measure, I can hopefully gain a helpful relative heuristic for each given year.
+
+```{r}
+all_data <- full_join(basic_infra, full_join(inc_win_data, full_join(homicide, full_join(handguns, full_join(csent, unemployment)))))
+
+all_data <- all_data %>%
+  arrange(year)
+
+complete_all_data <- all_data %>%
+  drop_na()
+# 1952-2017 date range
+
+goodness_index <- complete_all_data %>%
+  mutate(UMCSENT = scale(UMCSENT, scale=T, center=T), 
+        UNRATE = scale(UNRATE, scale=T, center=T), 
+        handguns_per_100k = scale(handguns_per_100k, scale=T, center=T),
+        homicide_share = scale(homicide_share, scale=T, center=T),
+        win_rate = scale(win_rate, scale=T, center=T),
+        investment = scale(investment, scale=T, center=T))
+
+
+
+colnames( goodness_index) <- c('year','econ_true', 'econ_perc', 'soc_true', 'soc_perc', 'gov_true', 'gov_perc')
+revcode <- reverse.code(keys = c(-1,1,-1,-1,1,1),
+                               items = goodness_index[,2:7],
+               )
+
+revcode <- as.data.frame(revcode)
+goodness_index <- goodness_index %>%
+  mutate(econ_true = revcode$`econ_true-`, soc_true = revcode$`soc_true-`, soc_perc = revcode$`soc_perc-`) %>%
+  mutate(perc_agg = rowMeans(select(goodness_index, 'econ_perc', 'soc_perc', 'gov_perc')),  true_agg = rowMeans(select(goodness_index,'econ_true', 'soc_true',  'gov_true')))
+
+goodness_index %>%
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = true_agg,color = "true value")) +
+  geom_line(aes(y = perc_agg, color = "perceived"))+
+  labs(title= '"Goodness" over time', y = 'index value', color = 'Measure' )
+
+goodness_index %>%
+  ggplot(aes(x = year)) +
+  geom_smooth(aes(y = true_agg,color = "true value")) +
+  geom_smooth(aes(y = perc_agg, color = "perceived"))+
+  labs(title= '"Goodness" over time - smoothed', 'index value', color = 'Measure')
+```
+
